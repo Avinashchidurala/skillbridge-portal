@@ -29,6 +29,8 @@ public class User {
 
     @Column(nullable = false)
     private boolean isActive;
+    @Column
+    private String otpCode; // Store latest OTP (optional expiry logic later)
 
     private String profileImageUrl;
     private String resumeUrl;
