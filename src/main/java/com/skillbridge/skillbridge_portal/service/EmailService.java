@@ -12,11 +12,16 @@ public class EmailService {
     private JavaMailSender mailSender;
 
     public void sendOtpEmail(String toEmail, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("SkillBridge OTP Verification");
-        message.setText("Your OTP is: " + otp);
-        message.setFrom("iot14041@gmail.com");
-        mailSender.send(message);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("SkillBridge OTP Verification");
+            message.setText("Your OTP is: " + otp);
+            message.setFrom("iot14041@gmail.com");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Failed to send OTP email: " + e.getMessage());
+        }
     }
 }
+

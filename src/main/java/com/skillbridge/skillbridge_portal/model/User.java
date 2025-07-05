@@ -30,6 +30,9 @@ public class User {
     @Column(nullable = false)
     private boolean isActive;
 
+    @Column(nullable = false)
+    private String password;
+
     private String profileImageUrl;
     private String resumeUrl;
     private String uniqueId;

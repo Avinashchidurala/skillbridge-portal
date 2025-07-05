@@ -3,6 +3,7 @@ package com.skillbridge.skillbridge_portal.service;
 import com.skillbridge.skillbridge_portal.model.User;
 import com.skillbridge.skillbridge_portal.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -28,6 +29,12 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    public String encodePassword(String rawPassword) {
+        return passwordEncoder.encode(rawPassword);
+    }
 
     public void setUserActivation(Long userId, boolean isActive) {
         Optional<User> optionalUser = userRepository.findById(userId);
