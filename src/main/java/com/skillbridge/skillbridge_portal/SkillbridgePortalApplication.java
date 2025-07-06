@@ -17,16 +17,16 @@ public class SkillbridgePortalApplication {
 	@Bean
 	CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder encoder) {
 		return args -> {
-			if (!userRepository.existsByEmail("admin@skillbridge.com")) {
+			if (!userRepository.existsByEmail("iot14041@gmail.com")) {
 				User admin = new User();
 				admin.setName("System Admin");
-				admin.setEmail("admin@skillbridge.com");
+				admin.setEmail("iot14041@gmail.com");
 				admin.setPassword(encoder.encode("Admin@123"));
 				admin.setRole("ADMIN");
 				admin.setActive(true);
 				admin.setVerified(true);
 				userRepository.save(admin);
-				System.out.println("✅ Default admin account created: admin@skillbridge.com");
+				System.out.println("✅ Default admin account created: ");
 			}
 		};
 	}
