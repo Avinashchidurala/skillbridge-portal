@@ -148,6 +148,7 @@ import com.skillbridge.skillbridge_portal.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -159,6 +160,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api/auth")
 @CrossOrigin // Allows frontend requests
 public class AuthController {
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private UserRepository userRepository;
@@ -212,6 +215,68 @@ public class AuthController {
         response.put("message", "OTP sent to your email.");
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("message", "Email not registered."));
+        }
+
+        String otp = generateOtp();
+        otpMap.put(email + ":reset", new OTPEntry(otp, System.currentTimeMillis())); // Unique key for reset
+        emailService.sendOtpEmail(email, otp);
+
+        return ResponseEntity.ok(Map.of("message", "OTP sent to your email for password reset."));
+    }
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<?> verifyResetOtp(@RequestParam String email, @RequestParam String otp) {
+        OTPEntry entry = otpMap.get(email + ":reset");
+        if (entry == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "No OTP found for reset."));
+        }
+
+        if (System.currentTimeMillis() - entry.getTimestamp() > 5 * 60 * 1000) {
+            otpMap.remove(email + ":reset");
+            return ResponseEntity.status(HttpStatus.GONE).body(Map.of("message", "OTP expired. Please try again."));
+        }
+
+        if (!entry.getOtp().equals(otp)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid OTP."));
+        }
+
+        otpMap.remove(email + ":reset");
+        otpMap.put(email + ":verified-reset", new OTPEntry("VERIFIED", System.currentTimeMillis()));
+        return ResponseEntity.ok(Map.of("message", "OTP verified. You may now reset your password."));
+    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String otp = payload.get("otp");
+        String newPassword = payload.get("newPassword");
+
+        OTPEntry entry = otpMap.get(email + ":reset");
+        if (entry == null || !entry.getOtp().equals(otp)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid or expired OTP."));
+        }
+
+        if (System.currentTimeMillis() - entry.getTimestamp() > 5 * 60 * 1000) {
+            otpMap.remove(email + ":reset");
+            return ResponseEntity.status(HttpStatus.GONE).body(Map.of("message", "OTP expired."));
+        }
+
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("message", "User not found."));
+        }
+
+        User user = optionalUser.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        otpMap.remove(email + ":reset");
+        return ResponseEntity.ok(Map.of("message", "Password reset successful."));
+    }
+
 
     // ✅ Verifies OTP within 5 minutes
     @PostMapping("/verify")
@@ -276,7 +341,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Account is deactivated. Contact administrator."));
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole()); // ✅ must use .name()
 
         return ResponseEntity.ok(Map.of("token", token));
     }
